@@ -1,0 +1,45 @@
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant E as Edge (WAF/CDN/Waiting room)
+    participant R as Reservation svc
+    participant I as Idempotency (Redis)
+    participant S as Inventory shard (Redis, Lua)
+    participant P as PSP
+    participant X as Reconciler
+    participant O as Outbox -> Kafka -> Order writer -> Postgres
+
+    C->>E: join queue
+    E-->>C: admission token (HMAC, 15 min)
+    C->>R: POST /skus/{sku}/holds + token + Idempotency-Key
+    R->>I: SETNX key=pending
+    R->>S: RESERVE (random shard, fall through on empty)
+    S-->>R: hold_id (status=held, expires T+10m)
+    R->>I: store 201 response
+    R-->>C: 201 hold_id
+
+    C->>R: POST /holds/{id}/pay + Idempotency-Key
+    R->>S: BEGIN_PAYMENT held -> paying (removed from expiry sweep)
+    R->>P: charge(idem = "charge:" + hold_id)
+    alt charge ok
+        P-->>R: charge_id
+        R->>S: CONFIRM paying -> confirmed + XADD outbox (one atomic script)
+        R-->>C: 200 confirmed
+    else declined
+        R->>S: ABORT paying -> held (user may retry before expiry)
+        R-->>C: 402
+    else breaker open / PSP limit (never sent)
+        R->>S: ABORT paying -> held
+        R-->>C: 503 + Retry-After (jittered)
+    else timeout (outcome unknown)
+        R-->>C: 202 payment_pending
+        X->>P: lookup("charge:" + hold_id) after deadline
+        alt found
+            X->>S: CONFIRM (+ outbox)
+        else not found
+            X->>S: RELEASE paying -> released, stock + 1
+        end
+    end
+    S-)O: outbox entry (at-least-once)
+    O->>O: INSERT order ON CONFLICT DO NOTHING, then bucket sold < capacity
+    Note over O: capacity violation => refund + page (last-line oversell guard)

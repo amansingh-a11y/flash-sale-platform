@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 10
+
+  reservation-api:
+    build: .
+    env_file: .env
+    environment:
+      REDIS_ADDR: redis:6379
+    ports: ["8080:8080"]
+    depends_on:
+      redis:
+        condition: service_healthy

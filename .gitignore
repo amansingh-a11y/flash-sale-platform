@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+bin/
+*.pem
+*.key
+*.p12
+coverage.out
+.DS_Store
+node_modules/

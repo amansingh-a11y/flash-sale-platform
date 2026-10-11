@@ -1,0 +1,74 @@
+%%{init: {"flowchart": {"curve": "basis", "nodeSpacing": 40, "rankSpacing": 55}, "themeVariables": {"fontSize": "15px"}}}%%
+flowchart TB
+    U["Users / Bots<br/>10M concurrent"]
+
+    subgraph EDGE["EDGE (CDN PoPs, global) - absorbs ~98% of traffic"]
+        direction LR
+        WAF["WAF + Bot Mgmt<br/>JS challenge, device fp,<br/>IP/ASN reputation"]
+        CDN["CDN cache<br/>catalog, static, availability<br/>max-age=1s + SWR, request coalescing"]
+        WR["Virtual Waiting Room<br/>edge KV queue, signed tokens,<br/>release rate = origin capacity"]
+    end
+
+    subgraph REGION["REGION (active-active, e.g. us-east / eu-west / ap-south) - 3 AZs each"]
+        direction TB
+        GW["API Gateway / L7 LB<br/>token verify, per-user + per-IP rate limit,<br/>global concurrency cap"]
+
+        subgraph STATELESS["Stateless services (K8s, HPA on RPS + admit rate, pre-warmed)"]
+            direction LR
+            CAT["Catalog / Availability<br/>local cache 250ms"]
+            RES["Reservation Service<br/>bulkheads: read / reserve / pay"]
+            PAY["Payment Orchestrator<br/>idempotency key = hold id,<br/>breaker + timeout + retry budget"]
+        end
+
+        subgraph HOT["Hot path state - failure boundary A"]
+            REDIS[("Inventory store<br/>Redis Cluster / MemoryDB<br/>SKU split into N shards,<br/>Lua atomic reserve, TTL holds,<br/>per-shard outbox stream")]
+            IDEM[("Idempotency store<br/>Redis, 24h TTL")]
+        end
+
+        REC["Reconciler<br/>sweep expired holds,<br/>resolve unknown payments"]
+        RELAY["Outbox relay"]
+
+        subgraph ASYNC["Async pipeline - failure boundary B"]
+            KAFKA[["Kafka / MSK<br/>topic orders.confirmed<br/>key = sku:shard"]]
+            OW["Order Writer<br/>idempotent upsert,<br/>bucket capacity check"]
+            NOTIF["Notifications<br/>email / push"]
+        end
+
+        subgraph SOR["System of record - failure boundary C"]
+            PG[("Aurora PostgreSQL<br/>orders, inventory_bucket,<br/>payment_attempts<br/>Multi-AZ, global DB")]
+            DDB[("DynamoDB global tables<br/>user sessions, waiting-room state")]
+        end
+    end
+
+    PSP{{"Third-party PSP<br/>rate-limited, occasional timeouts"}}
+    OLAP[("ClickHouse / S3<br/>analytics, reconciliation reports")]
+    OBS["Observability<br/>Prometheus, OTel traces, logs,<br/>SLO burn alerts"]
+
+    U --> WAF --> CDN
+    CDN -- "cache miss / writes" --> WR
+    WR -- "admitted + token" --> GW
+    GW --> CAT & RES
+    CAT --> REDIS
+    RES --> IDEM
+    RES -- "reserve / confirm (atomic)" --> REDIS
+    RES --> PAY
+    PAY -- "charge(idem key)" --> PSP
+    PSP -. "webhook" .-> PAY
+    REC --> REDIS
+    REC -- "lookup(idem key)" --> PSP
+    REDIS -- "outbox XREADGROUP" --> RELAY --> KAFKA
+    KAFKA --> OW --> PG
+    KAFKA --> NOTIF
+    KAFKA --> OLAP
+    PG -. "rebuild counts on failover" .-> REDIS
+    WR --- DDB
+    STATELESS -.-> OBS
+
+    classDef edge fill:#e8f1ff,stroke:#3b6fd8
+    classDef hot fill:#fff1e6,stroke:#d9822b
+    classDef sor fill:#eaf7ea,stroke:#3a9a3a
+    classDef ext fill:#f6e8ff,stroke:#8a4fd1
+    class WAF,CDN,WR edge
+    class REDIS,IDEM hot
+    class PG,DDB sor
+    class PSP,OLAP ext

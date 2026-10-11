@@ -1,0 +1,92 @@
+# Illustrative manifests. Secrets come from an external secret store
+# (e.g. External Secrets Operator -> AWS Secrets Manager); nothing is inlined.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservation-api
+spec:
+  replicas: 40 # steady-state floor; pre-warm job raises it before a drop
+  strategy:
+    rollingUpdate: { maxSurge: 25%, maxUnavailable: 0 }
+  selector:
+    matchLabels: { app: reservation-api }
+  template:
+    metadata:
+      labels: { app: reservation-api }
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector: { matchLabels: { app: reservation-api } }
+      terminationGracePeriodSeconds: 40
+      containers:
+        - name: api
+          image: REGISTRY/reservation-api:TAG
+          ports: [{ containerPort: 8080 }]
+          envFrom:
+            - configMapRef: { name: reservation-api }
+            - secretRef: { name: reservation-api } # ADMISSION_SECRET, ADMIN_TOKEN, REDIS_PASSWORD
+          resources:
+            requests: { cpu: "1", memory: 512Mi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 10
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: reservation-api
+spec:
+  minAvailable: 90%
+  selector:
+    matchLabels: { app: reservation-api }
+---
+# Scale on demand signals that lead CPU: in-flight requests and waiting-room
+# admission rate. CPU lags by the time a pod saturates.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: reservation-api
+spec:
+  scaleTargetRef: { name: reservation-api }
+  minReplicaCount: 40
+  maxReplicaCount: 600
+  pollingInterval: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies: [{ type: Percent, value: 200, periodSeconds: 15 }]
+        scaleDown:
+          stabilizationWindowSeconds: 600 # drops end sharply; don't flap
+          policies: [{ type: Percent, value: 10, periodSeconds: 60 }]
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        query: sum(rate(http_requests_total{app="reservation-api"}[30s]))
+        threshold: "800" # target rps per pod (~60% of measured knee)
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus:9090
+        query: sum(waiting_room_admit_rate{event=~".+"})
+        threshold: "800"
+    - type: cpu
+      metricType: Utilization
+      metadata: { value: "60" }
+    # Scheduled pre-warm for a known drop (T-30m to T+90m). KEDA takes the max
+    # across triggers, so this acts as a floor. The drop-calendar controller
+    # patches these times per event.
+    - type: cron
+      metadata:
+        timezone: UTC
+        start: 30 17 * * 5
+        end: 30 19 * * 5
+        desiredReplicas: "400"
