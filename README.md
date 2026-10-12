@@ -8,7 +8,7 @@ reservation and payment core.
 | | |
 |---|---|
 | **Proposal (main document)** | [`docs/proposal.md`](docs/proposal.md) |
-| **HLD diagram** | [`docs/diagrams/hld.png`](docs/diagrams/hld.png) (source: [`hld.mmd`](docs/diagrams/hld.mmd)); walkthrough in [proposal §2.1](docs/proposal.md#21-diagram-walkthrough) |
+| **HLD diagram** | [`docs/diagrams/hld.png`](docs/diagrams/hld.png) (source: [`hld.mmd`](docs/diagrams/hld.mmd)); walkthrough in [`docs/diagrams/README.md`](docs/diagrams/README.md) and [proposal §2.1](docs/proposal.md#21-diagram-walkthrough) |
 | **Reserve/pay sequence** | [`docs/diagrams/reservation-sequence.png`](docs/diagrams/reservation-sequence.png) |
 | **Decision records** | [`docs/adr/`](docs/adr/) |
 | **Incident runbook** | [`docs/runbook.md`](docs/runbook.md) |
