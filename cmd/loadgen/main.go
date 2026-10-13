@@ -16,7 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/amansingh/flash-sale-platform/internal/admission"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/admission"
 )
 
 func main() {

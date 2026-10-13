@@ -10,8 +10,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/amansingh/flash-sale-platform/internal/inventory"
-	"github.com/amansingh/flash-sale-platform/internal/payment"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/inventory"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/payment"
 )
 
 type Reconciler struct {

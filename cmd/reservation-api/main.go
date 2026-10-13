@@ -16,14 +16,14 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/amansingh/flash-sale-platform/internal/api"
-	"github.com/amansingh/flash-sale-platform/internal/config"
-	"github.com/amansingh/flash-sale-platform/internal/idempotency"
-	"github.com/amansingh/flash-sale-platform/internal/inventory"
-	"github.com/amansingh/flash-sale-platform/internal/orders"
-	"github.com/amansingh/flash-sale-platform/internal/payment"
-	"github.com/amansingh/flash-sale-platform/internal/reconcile"
-	"github.com/amansingh/flash-sale-platform/internal/resilience"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/api"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/config"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/idempotency"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/inventory"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/orders"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/payment"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/reconcile"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/resilience"
 )
 
 func main() {

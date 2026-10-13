@@ -1,4 +1,4 @@
-module github.com/amansingh/flash-sale-platform
+module github.com/amansingh-a11y/flash-sale-platform
 
 go 1.26.0
 

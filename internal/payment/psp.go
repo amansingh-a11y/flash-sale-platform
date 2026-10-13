@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/amansingh/flash-sale-platform/internal/resilience"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/resilience"
 )
 
 var (

@@ -14,12 +14,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/amansingh/flash-sale-platform/internal/admission"
-	"github.com/amansingh/flash-sale-platform/internal/idempotency"
-	"github.com/amansingh/flash-sale-platform/internal/inventory"
-	"github.com/amansingh/flash-sale-platform/internal/orders"
-	"github.com/amansingh/flash-sale-platform/internal/payment"
-	"github.com/amansingh/flash-sale-platform/internal/resilience"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/admission"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/idempotency"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/inventory"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/orders"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/payment"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/resilience"
 )
 
 type Server struct {

@@ -19,7 +19,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/amansingh/flash-sale-platform/internal/inventory"
+	"github.com/amansingh-a11y/flash-sale-platform/internal/inventory"
 )
 
 var ErrCapacityExceeded = errors.New("orders: shard capacity exceeded")
